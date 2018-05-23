@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -11,6 +12,12 @@ import (
 // TLSEnablerPlugin allows you to quickly enabled TLS on a service instance of MySQL for PCF v2.3
 type TLSEnablerPlugin struct {
 	cliConnection plugin.CliConnection
+}
+
+var supportedServices = map[string]bool{
+	"p.rabbitmq":             true,
+	"p.mysql":                true,
+	"rabbitmq-odb-bosh-lite": true,
 }
 
 // Run is the main entry point for CF CLI plugins
@@ -64,22 +71,18 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		return err
 	}
 
-	// TODO
-	randomKeyName := "enable-tls-key"
+	randomKeyName := "temporary-key-to-enable-tls"
 
 	t.cliConnection.CliCommand("create-service-key", serviceName, randomKeyName)
 
-	switch serviceInfo.ServiceOffering.Name {
-	case "p.rabbitmq":
-		log.Fatalf("p-rabbitmq is not yet supported")
-	// TODO change to p.mysql
-	case "cleardb":
-		sans := t.getHostnames(serviceInfo.Guid, randomKeyName)
-		log.Printf("%v", sans)
-	default:
+	sans := t.getHostnames(serviceInfo.Guid, randomKeyName)
+
+	if _, ok := supportedServices[serviceInfo.ServiceOffering.Name]; !ok {
 		log.Fatalf("Sorry, I don't know how to enable TLS on an instance of %v service\n", serviceInfo.ServiceOffering.Name)
 	}
 
+	arbitraryParameters := fmt.Sprintf("{\"tls\": \"%v\"}", sans)
+	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
 	}
@@ -100,10 +103,11 @@ func (t *TLSEnablerPlugin) getHostnames(serviceGUID string, randomKeyName string
 	}
 
 	c := &cfclient.Config{
-		ApiAddress: apiEndpoint,
-		Token:      strings.Split(apiToken, " ")[1],
+		ApiAddress:        apiEndpoint,
+		Token:             strings.Split(apiToken, " ")[1],
+		SkipSslValidation: true,
 	}
-	log.Println(c)
+
 	client, err := cfclient.NewClient(c)
 	if err != nil {
 		log.Println(err)
@@ -112,5 +116,6 @@ func (t *TLSEnablerPlugin) getHostnames(serviceGUID string, randomKeyName string
 	if err != nil {
 		log.Print(err)
 	}
+
 	return []string{serviceKey[0].Credentials.(map[string]interface{})["hostname"].(string)}
 }
