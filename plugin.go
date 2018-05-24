@@ -18,6 +18,7 @@ var supportedServices = map[string]bool{
 	"p.rabbitmq":             true,
 	"p.mysql":                true,
 	"rabbitmq-odb-bosh-lite": true,
+	"cleardb":                true,
 }
 
 // Run is the main entry point for CF CLI plugins
@@ -71,35 +72,40 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		return err
 	}
 
-	randomKeyName := "temporary-key-to-enable-tls"
-
-	t.cliConnection.CliCommand("create-service-key", serviceName, randomKeyName)
-
-	sans := t.getHostnames(serviceInfo.Guid, randomKeyName)
-
 	if _, ok := supportedServices[serviceInfo.ServiceOffering.Name]; !ok {
 		log.Fatalf("Sorry, I don't know how to enable TLS on an instance of %v service\n", serviceInfo.ServiceOffering.Name)
 	}
 
-	arbitraryParameters := fmt.Sprintf("{\"tls\": \"%v\"}", sans)
+	serviceKeyName := "temporary-key-to-enable-tls"
+	_, err = t.cliConnection.CliCommand("create-service-key", serviceName, serviceKeyName)
+	if err != nil {
+		return err
+	}
+	defer t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, serviceKeyName)
+
+	serviceKey, err := t.getServiceKey(serviceInfo.Guid, serviceKeyName)
+	if err != nil {
+		return err
+	}
+
+	hostnames := t.getHostnamesFromServiceKey(serviceKey)
+	arbitraryParameters := fmt.Sprintf("{\"tls\": \"%v\"}", hostnames)
 	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
 	}
 
-	t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, randomKeyName)
-
 	return nil
 }
 
-func (t *TLSEnablerPlugin) getHostnames(serviceGUID string, randomKeyName string) []string {
+func (t *TLSEnablerPlugin) getServiceKey(serviceGUID string, serviceKeyName string) (cfclient.ServiceKey, error) {
 	apiEndpoint, err := t.cliConnection.ApiEndpoint()
 	if err != nil {
-		return nil
+		return cfclient.ServiceKey{}, err
 	}
 	apiToken, err := t.cliConnection.AccessToken()
 	if err != nil {
-		return nil
+		return cfclient.ServiceKey{}, nil
 	}
 
 	c := &cfclient.Config{
@@ -117,5 +123,9 @@ func (t *TLSEnablerPlugin) getHostnames(serviceGUID string, randomKeyName string
 		log.Print(err)
 	}
 
-	return []string{serviceKey[0].Credentials.(map[string]interface{})["hostname"].(string)}
+	return serviceKey[0], nil
+}
+
+func (t *TLSEnablerPlugin) getHostnamesFromServiceKey(serviceKey cfclient.ServiceKey) []string {
+	return []string{serviceKey.Credentials.(map[string]interface{})["hostname"].(string)}
 }
