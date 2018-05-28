@@ -81,15 +81,16 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 	if err != nil {
 		return err
 	}
-	defer t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, serviceKeyName)
 
 	serviceKey, err := t.getServiceKey(serviceInfo.Guid, serviceKeyName)
 	if err != nil {
 		return err
 	}
+	// ideally it should be used with defer() but it doesn't work (gets triggered but the key doesn't get deleted)
+	t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, serviceKeyName)
 
 	hostnames := t.getHostnamesFromServiceKey(serviceKey.Credentials.(map[string]interface{}))
-	arbitraryParameters := fmt.Sprintf("{\"%v\": %v}", supportedServices[serviceInfo.ServiceOffering.Name], hostnames)
+	arbitraryParameters := fmt.Sprintf("{\"%v\": [%v]}", supportedServices[serviceInfo.ServiceOffering.Name], strings.Join(hostnames, ","))
 	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
@@ -127,6 +128,15 @@ func (t *TLSEnablerPlugin) getServiceKey(serviceGUID string, serviceKeyName stri
 }
 
 func (t *TLSEnablerPlugin) getHostnamesFromServiceKey(serviceKey map[string]interface{}) []string {
-	host := fmt.Sprintf("\"%v\"", serviceKey["hostname"].(string))
-	return []string{host}
+	var hs []string
+	if hostnames, ok := serviceKey["hostnames"]; ok {
+		for _, h := range hostnames.([]interface{}) {
+			hs = append(hs, fmt.Sprintf("\"%v\"", h.(string)))
+		}
+		return hs
+	}
+
+	// this is a single-node service which doesn't reutrn `hostnames`
+	hs = []string{fmt.Sprintf("\"%v\"", serviceKey["hostname"].(string))}
+	return hs
 }

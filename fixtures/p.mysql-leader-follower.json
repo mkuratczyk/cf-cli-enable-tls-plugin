@@ -1,0 +1,13 @@
+{
+ "hostname": "10.1.2.3",
+ "hostnames": [
+  "10.1.2.3",
+  "10.1.2.4"
+ ],
+ "jdbcUrl": "jdbc:mysql://10.1.2.3:3306/service_instance_db?user=fakeuser\u0026password=fakepassword\u0026useSSL=false",
+ "name": "service_instance_db",
+ "password": "fakepassword",
+ "port": 3306,
+ "uri": "mysql://fakeuser:fakepassword@10.1.2.3:3306/service_instance_db?reconnect=true",
+ "username": "fakeuser"
+}

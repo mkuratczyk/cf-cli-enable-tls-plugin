@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("getHostnamesFromServiceKey", func() {
-	DescribeTable("can parse service keys of known service types",
+	DescribeTable("can parse a service key for",
 		func(fixtureFile string, expectedHostnames []string) {
 			fixture, _ := ioutil.ReadFile(filepath.Join("fixtures", fixtureFile))
 			var serviceKey map[string]interface{}
@@ -22,6 +22,7 @@ var _ = Describe("getHostnamesFromServiceKey", func() {
 			Expect(hostnames).To(Equal(expectedHostnames))
 		},
 		Entry("single node MySQL", "p.mysql-single-node.json", []string{"\"10.1.2.3\""}),
+		Entry("MySQL with leader-follower", "p.mysql-leader-follower.json", []string{"\"10.1.2.3\"", "\"10.1.2.4\""}),
 	)
 
 })
