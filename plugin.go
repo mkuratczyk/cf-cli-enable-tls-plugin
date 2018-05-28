@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/cli/plugin"
+	"code.cloudfoundry.org/cli/plugin/models"
 )
 
 // TLSEnablerPlugin allows you to quickly enabled TLS on a service instance of MySQL for PCF v2.3
@@ -76,27 +77,35 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		log.Fatalf("Sorry, I don't know how to enable TLS on an instance of %v service\n", serviceInfo.ServiceOffering.Name)
 	}
 
-	serviceKeyName := "temporary-key-to-enable-tls"
-	_, err = t.cliConnection.CliCommand("create-service-key", serviceName, serviceKeyName)
+	arbitraryParameters, err := t.buildArbitraryParameters(serviceInfo)
 	if err != nil {
 		return err
 	}
 
-	serviceKey, err := t.getServiceKey(serviceName, serviceKeyName)
-	if err != nil {
-		return err
-	}
-	// ideally it should be used with defer() but it doesn't work (gets triggered but the key doesn't get deleted)
-	t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, serviceKeyName)
-
-	hostnames := t.getHostnamesFromServiceKey(serviceKey)
-	arbitraryParameters := fmt.Sprintf("{\"%v\": [%v]}", supportedServices[serviceInfo.ServiceOffering.Name], strings.Join(hostnames, ","))
 	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (t *TLSEnablerPlugin) buildArbitraryParameters(serviceInfo plugin_models.GetService_Model) (string, error) {
+	serviceKeyName := "temporary-key-to-enable-tls"
+	_, err := t.cliConnection.CliCommand("create-service-key", serviceInfo.Name, serviceKeyName)
+	if err != nil {
+		return "", err
+	}
+
+	serviceKey, err := t.getServiceKey(serviceInfo.Name, serviceKeyName)
+	if err != nil {
+		return "", err
+	}
+	// ideally it should be used with defer() but it doesn't work (gets triggered but the key doesn't get deleted)
+	t.cliConnection.CliCommand("delete-service-key", "-f", serviceInfo.Name, serviceKeyName)
+
+	hostnames := t.getHostnamesFromServiceKey(serviceKey)
+	return fmt.Sprintf("{\"%v\": [%v]}", supportedServices[serviceInfo.ServiceOffering.Name], strings.Join(hostnames, ",")), nil
 }
 
 func (t *TLSEnablerPlugin) getServiceKey(serviceName string, serviceKeyName string) (map[string]interface{}, error) {

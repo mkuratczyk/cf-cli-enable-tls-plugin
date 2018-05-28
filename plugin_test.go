@@ -26,5 +26,4 @@ var _ = Describe("getHostnamesFromServiceKey", func() {
 		Entry("single node RabbitMQ", "p.rabbitmq-single-node.json", []string{"\"10.1.2.3\""}),
 		Entry("RabbitMQ cluster", "p.rabbitmq-cluster.json", []string{"\"10.1.2.3\"", "\"10.1.2.4\"", "\"10.1.2.5\""}),
 	)
-
 })
