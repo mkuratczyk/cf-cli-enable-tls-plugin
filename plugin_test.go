@@ -1,28 +1,27 @@
 package main
 
 import (
-	"testing"
+	"encoding/json"
+	"io/ioutil"
+	"path/filepath"
 
-	"github.com/cloudfoundry-community/go-cfclient"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/gomega"
 )
 
-var clearDBkey = cfclient.ServiceKey{
-	Credentials: map[string]interface{}{
-		"hostname": "us-cdbr-iron-east-00.cleardb.net",
-		"jdbcUrl":  "jdbc:mysql://us-cdbr-iron-east-00.cleardb.net/ad_4hbbj34jh34b3h4?user=34in34i34in\u0026password=foooooo",
-		"name":     "ad_4hbbj34jh34b3h4",
-		"password": "foooooo",
-		"port":     "3306",
-		"uri":      "mysql://34in34i34in:foooooo@us-cdbr-iron-east-04.cleardb.net:3306/ad_4hbbj34jh34b3h4?reconnect=true",
-		"username": "34in34i34in",
-	}}
+var _ = Describe("getHostnamesFromServiceKey", func() {
+	DescribeTable("can parse service keys of known service types",
+		func(fixtureFile string, expectedHostnames []string) {
+			fixture, _ := ioutil.ReadFile(filepath.Join("fixtures", fixtureFile))
+			var serviceKey map[string]interface{}
+			json.Unmarshal(fixture, &serviceKey)
 
-func TestGetHostnamesFromServiceKey_cleardb(t *testing.T) {
-	plugin := TLSEnablerPlugin{}
-	expectedHostnames := []string{"us-cdbr-iron-east-00.cleardb.net"}
+			plugin := TLSEnablerPlugin{}
+			hostnames := plugin.getHostnamesFromServiceKey(serviceKey)
+			Expect(hostnames).To(Equal(expectedHostnames))
+		},
+		Entry("single node MySQL", "p.mysql-single-node.json", []string{"\"10.1.2.3\""}),
+	)
 
-	hostnames := plugin.getHostnamesFromServiceKey(clearDBkey)
-	if hostnames[0] != expectedHostnames[0] {
-		t.Errorf("That's not what I expected!")
-	}
-}
+})

@@ -14,11 +14,11 @@ type TLSEnablerPlugin struct {
 	cliConnection plugin.CliConnection
 }
 
-var supportedServices = map[string]bool{
-	"p.rabbitmq":             true,
-	"p.mysql":                true,
-	"rabbitmq-odb-bosh-lite": true,
-	"cleardb":                true,
+// maps supported service type to arbitrary parameter name
+var supportedServices = map[string]string{
+	"p.rabbitmq":             "tls",
+	"p.mysql":                "enable_tls",
+	"rabbitmq-odb-bosh-lite": "tls",
 }
 
 // Run is the main entry point for CF CLI plugins
@@ -88,8 +88,8 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		return err
 	}
 
-	hostnames := t.getHostnamesFromServiceKey(serviceKey)
-	arbitraryParameters := fmt.Sprintf("{\"tls\": \"%v\"}", hostnames)
+	hostnames := t.getHostnamesFromServiceKey(serviceKey.Credentials.(map[string]interface{}))
+	arbitraryParameters := fmt.Sprintf("{\"%v\": %v}", supportedServices[serviceInfo.ServiceOffering.Name], hostnames)
 	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
@@ -126,6 +126,7 @@ func (t *TLSEnablerPlugin) getServiceKey(serviceGUID string, serviceKeyName stri
 	return serviceKey[0], nil
 }
 
-func (t *TLSEnablerPlugin) getHostnamesFromServiceKey(serviceKey cfclient.ServiceKey) []string {
-	return []string{serviceKey.Credentials.(map[string]interface{})["hostname"].(string)}
+func (t *TLSEnablerPlugin) getHostnamesFromServiceKey(serviceKey map[string]interface{}) []string {
+	host := fmt.Sprintf("\"%v\"", serviceKey["hostname"].(string))
+	return []string{host}
 }
