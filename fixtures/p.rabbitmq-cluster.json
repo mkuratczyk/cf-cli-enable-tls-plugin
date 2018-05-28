@@ -1,0 +1,44 @@
+{
+ "dashboard_url": "https://rmq-37f1d29a-b3a4-4295-8f12-6ab51c92bf2e.bosh-lite.com/#/login/fakeuser/fakepassword",
+ "hostname": "10.1.2.3",
+ "hostnames": [
+  "10.1.2.3",
+  "10.1.2.4",
+  "10.1.2.5"
+ ],
+ "http_api_uri": "https://fakeuser:fakepassword@rmq-37f1d29a-b3a4-4295-8f12-6ab51c92bf2e.bosh-lite.com/api/",
+ "http_api_uris": [
+  "https://fakeuser:fakepassword@rmq-37f1d29a-b3a4-4295-8f12-6ab51c92bf2e.bosh-lite.com/api/"
+ ],
+ "password": "fakepassword",
+ "protocols": {
+  "amqp": {
+   "host": "10.1.2.3",
+   "hosts": [
+    "10.1.2.3",
+    "10.1.2.4",
+    "10.1.2.5"
+   ],
+   "password": "fakepassword",
+   "port": 5672,
+   "ssl": false,
+   "uri": "amqp://fakeuser:fakepassword@10.1.2.3/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+   "uris": [
+    "amqp://fakeuser:fakepassword@10.1.2.3/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+    "amqp://fakeuser:fakepassword@10.1.2.4/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+    "amqp://fakeuser:fakepassword@10.1.2.5/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e"
+   ],
+   "username": "fakeuser",
+   "vhost": "37f1d29a-b3a4-4295-8f12-6ab51c92bf2e"
+  }
+ },
+ "ssl": false,
+ "uri": "amqp://fakeuser:fakepassword@10.1.2.3/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+ "uris": [
+  "amqp://fakeuser:fakepassword@10.1.2.3/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+  "amqp://fakeuser:fakepassword@10.1.2.4/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e",
+  "amqp://fakeuser:fakepassword@10.1.2.5/37f1d29a-b3a4-4295-8f12-6ab51c92bf2e"
+ ],
+ "username": "fakeuser",
+ "vhost": "37f1d29a-b3a4-4295-8f12-6ab51c92bf2e"
+}

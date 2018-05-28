@@ -1,0 +1,36 @@
+{
+ "dashboard_url": "https://rmq-e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48.bosh-lite.com/#/login/fakeuser/fakepassword",
+ "hostname": "10.1.2.3",
+ "hostnames": [
+  "10.1.2.3"
+ ],
+ "http_api_uri": "https://fakeuser:fakepassword@rmq-e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48.bosh-lite.com/api/",
+ "http_api_uris": [
+  "https://fakeuser:fakepassword@rmq-e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48.bosh-lite.com/api/"
+ ],
+ "password": "fakepassword",
+ "protocols": {
+  "amqp": {
+   "host": "10.1.2.3",
+   "hosts": [
+    "10.1.2.3"
+   ],
+   "password": "fakepassword",
+   "port": 5672,
+   "ssl": false,
+   "uri": "amqp://fakeuser:fakepassword@10.1.2.3/e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48",
+   "uris": [
+    "amqp://fakeuser:fakepassword@10.1.2.3/e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48"
+   ],
+   "username": "fakeuser",
+   "vhost": "e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48"
+  }
+ },
+ "ssl": false,
+ "uri": "amqp://fakeuser:fakepassword@10.1.2.3/e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48",
+ "uris": [
+  "amqp://fakeuser:fakepassword@10.1.2.3/e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48"
+ ],
+ "username": "fakeuser",
+ "vhost": "e0a859ab-e0ad-4e3b-b4ed-0574a7d5ca48"
+}
