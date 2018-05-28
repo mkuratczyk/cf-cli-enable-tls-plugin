@@ -1,12 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 
 	"code.cloudfoundry.org/cli/plugin"
-	cfclient "github.com/cloudfoundry-community/go-cfclient"
 )
 
 // TLSEnablerPlugin allows you to quickly enabled TLS on a service instance of MySQL for PCF v2.3
@@ -82,14 +82,14 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		return err
 	}
 
-	serviceKey, err := t.getServiceKey(serviceInfo.Guid, serviceKeyName)
+	serviceKey, err := t.getServiceKey(serviceName, serviceKeyName)
 	if err != nil {
 		return err
 	}
 	// ideally it should be used with defer() but it doesn't work (gets triggered but the key doesn't get deleted)
 	t.cliConnection.CliCommand("delete-service-key", "-f", serviceName, serviceKeyName)
 
-	hostnames := t.getHostnamesFromServiceKey(serviceKey.Credentials.(map[string]interface{}))
+	hostnames := t.getHostnamesFromServiceKey(serviceKey)
 	arbitraryParameters := fmt.Sprintf("{\"%v\": [%v]}", supportedServices[serviceInfo.ServiceOffering.Name], strings.Join(hostnames, ","))
 	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
 	if err != nil {
@@ -99,32 +99,14 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 	return nil
 }
 
-func (t *TLSEnablerPlugin) getServiceKey(serviceGUID string, serviceKeyName string) (cfclient.ServiceKey, error) {
-	apiEndpoint, err := t.cliConnection.ApiEndpoint()
+func (t *TLSEnablerPlugin) getServiceKey(serviceName string, serviceKeyName string) (map[string]interface{}, error) {
+	output, err := t.cliConnection.CliCommand("service-key", serviceName, serviceKeyName)
 	if err != nil {
-		return cfclient.ServiceKey{}, err
+		log.Fatal(err)
 	}
-	apiToken, err := t.cliConnection.AccessToken()
-	if err != nil {
-		return cfclient.ServiceKey{}, nil
-	}
-
-	c := &cfclient.Config{
-		ApiAddress:        apiEndpoint,
-		Token:             strings.Split(apiToken, " ")[1],
-		SkipSslValidation: true,
-	}
-
-	client, err := cfclient.NewClient(c)
-	if err != nil {
-		log.Println(err)
-	}
-	serviceKey, err := client.GetServiceKeysByInstanceGuid(serviceGUID)
-	if err != nil {
-		log.Print(err)
-	}
-
-	return serviceKey[0], nil
+	var serviceKey map[string]interface{}
+	json.Unmarshal([]byte(strings.Join(output[2:], "")), &serviceKey)
+	return serviceKey, nil
 }
 
 func (t *TLSEnablerPlugin) getHostnamesFromServiceKey(serviceKey map[string]interface{}) []string {
