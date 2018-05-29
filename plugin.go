@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"code.cloudfoundry.org/cli/plugin"
 	"code.cloudfoundry.org/cli/plugin/models"
@@ -13,6 +14,7 @@ import (
 // TLSEnablerPlugin allows you to quickly enabled TLS on a service instance of MySQL for PCF v2.3
 type TLSEnablerPlugin struct {
 	cliConnection plugin.CliConnection
+	serviceName   string
 }
 
 // maps supported service type to arbitrary parameter name
@@ -24,6 +26,8 @@ var supportedServices = map[string]string{
 
 // Run is the main entry point for CF CLI plugins
 func (t *TLSEnablerPlugin) Run(cliConnection plugin.CliConnection, args []string) {
+	t.cliConnection = cliConnection
+
 	switch args[0] {
 	case "CLI-MESSAGE-UNINSTALL":
 		return
@@ -31,16 +35,25 @@ func (t *TLSEnablerPlugin) Run(cliConnection plugin.CliConnection, args []string
 		if len(args) != 2 {
 			log.Fatalln("USAGE: cf enable-tls SERVICE_NAME")
 		}
+		t.serviceName = args[1]
+		err := t.enableTLS()
+		if err != nil {
+			log.Fatalf("Failed to enable TLS: %v", err)
+		}
+	case "create-service-with-tls":
+		if len(args) < 4 {
+			log.Fatalln("USAGE: create-service-with-tls SERVICE PLAN SERVICE_INSTANCE [-c PARAMETERS_AS_JSON] [-t TAGS]")
+		}
+		args[0] = "create-service"
+		t.serviceName = args[3]
+		err := t.createServiceWithTLS(args)
+		if err != nil {
+			log.Fatalf("Failed to create service with TLS: %v", err)
+		}
 	default:
 		log.Fatalf("Received unexpected command %v\n", args[0])
 	}
 
-	t.cliConnection = cliConnection
-
-	err := t.enableTLS(args[1])
-	if err != nil {
-		log.Fatalf("Failed to enable TLS: %v", err)
-	}
 }
 
 // GetMetadata return plugin information
@@ -49,7 +62,7 @@ func (t *TLSEnablerPlugin) GetMetadata() plugin.PluginMetadata {
 		Name: "TLSEnabler",
 		Version: plugin.VersionType{
 			Major: 0,
-			Minor: 1,
+			Minor: 2,
 			Build: 0,
 		},
 		Commands: []plugin.Command{
@@ -61,14 +74,22 @@ func (t *TLSEnablerPlugin) GetMetadata() plugin.PluginMetadata {
 					Usage: "enable-tls NAME - enable TLS on service instance NAME",
 				},
 			},
+			{
+				Name:     "create-service-with-tls",
+				Alias:    "",
+				HelpText: "executes create-service and then immediately enable-tls",
+				UsageDetails: plugin.Usage{
+					Usage: "create-service-with-tls SERVICE PLAN SERVICE_INSTANCE [-c PARAMETERS_AS_JSON] [-t TAGS]",
+				},
+			},
 		},
 	}
 }
 
-func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
-	log.Printf("Enabling TLS on service %v\n", serviceName)
+func (t *TLSEnablerPlugin) enableTLS() error {
+	log.Printf("Enabling TLS on service %v\n", t.serviceName)
 
-	serviceInfo, err := t.cliConnection.GetService(serviceName)
+	serviceInfo, err := t.cliConnection.GetService(t.serviceName)
 	if err != nil {
 		return err
 	}
@@ -82,12 +103,43 @@ func (t *TLSEnablerPlugin) enableTLS(serviceName string) error {
 		return err
 	}
 
-	_, err = t.cliConnection.CliCommand("update-service", serviceName, "-c", arbitraryParameters)
+	_, err = t.cliConnection.CliCommand("update-service", t.serviceName, "-c", arbitraryParameters)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (t *TLSEnablerPlugin) createServiceWithTLS(args []string) error {
+	_, err := t.cliConnection.CliCommand(args...)
+	if err != nil {
+		return err
+	}
+	// wait for `create` to complete
+	t.waitUntilServiceCreated()
+	return t.enableTLS()
+}
+
+func (t *TLSEnablerPlugin) waitUntilServiceCreated() error {
+	for {
+		service, err := t.cliConnection.GetService(t.serviceName)
+		if err != nil {
+			return err
+		}
+
+		if service.LastOperation.State == "succeeded" {
+			return nil
+		} else if service.LastOperation.State == "failed" {
+			return fmt.Errorf(
+				"error %s [status: %s]",
+				service.LastOperation.Description,
+				service.LastOperation.State,
+			)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
 }
 
 func (t *TLSEnablerPlugin) buildArbitraryParameters(serviceInfo plugin_models.GetService_Model) (string, error) {
@@ -97,7 +149,7 @@ func (t *TLSEnablerPlugin) buildArbitraryParameters(serviceInfo plugin_models.Ge
 		return "", err
 	}
 
-	serviceKey, err := t.getServiceKey(serviceInfo.Name, serviceKeyName)
+	serviceKey, err := t.getServiceKey(serviceKeyName)
 	if err != nil {
 		return "", err
 	}
@@ -108,8 +160,8 @@ func (t *TLSEnablerPlugin) buildArbitraryParameters(serviceInfo plugin_models.Ge
 	return fmt.Sprintf("{\"%v\": [%v]}", supportedServices[serviceInfo.ServiceOffering.Name], strings.Join(hostnames, ",")), nil
 }
 
-func (t *TLSEnablerPlugin) getServiceKey(serviceName string, serviceKeyName string) (map[string]interface{}, error) {
-	output, err := t.cliConnection.CliCommand("service-key", serviceName, serviceKeyName)
+func (t *TLSEnablerPlugin) getServiceKey(serviceKeyName string) (map[string]interface{}, error) {
+	output, err := t.cliConnection.CliCommand("service-key", t.serviceName, serviceKeyName)
 	if err != nil {
 		log.Fatal(err)
 	}
