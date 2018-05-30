@@ -11,13 +11,13 @@ import (
 	"code.cloudfoundry.org/cli/plugin/models"
 )
 
-// TLSEnablerPlugin allows you to quickly enabled TLS on a service instance of MySQL for PCF v2.3
+// TLSEnablerPlugin allows you to quickly enable TLS for selected service instances
 type TLSEnablerPlugin struct {
 	cliConnection plugin.CliConnection
 	serviceName   string
 }
 
-// maps supported service type to arbitrary parameter name
+// maps supported service type to the arbitrary parameter name
 var supportedServices = map[string]string{
 	"p.rabbitmq":             "tls",
 	"p.mysql":                "enable_tls",
@@ -56,7 +56,7 @@ func (t *TLSEnablerPlugin) Run(cliConnection plugin.CliConnection, args []string
 
 }
 
-// GetMetadata return plugin information
+// GetMetadata returns plugin information
 func (t *TLSEnablerPlugin) GetMetadata() plugin.PluginMetadata {
 	return plugin.PluginMetadata{
 		Name: "TLSEnabler",
